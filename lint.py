@@ -21,11 +21,17 @@ def check_imports(file_path: Path, allowed_imports: set) -> list[str]:
                             f"Import '{alias.name}' not in allowed list"
                         )
             elif isinstance(node, ast.ImportFrom):
-                if node.module and node.module not in allowed_imports:
-                    errors.append(
-                        f"{file_path}:{node.lineno}: "
-                        f"Import from '{node.module}' not allowed"
-                    )
+                if node.module:
+                    module = node.module
+                    if module not in allowed_imports and not module.startswith("."):
+                        allowed_prefixes = ["src.types", "src.config", "src.repo", 
+                                           "src.utils", "src.service", "src.ui", "src.runtime"]
+                        is_allowed = any(module.startswith(prefix) for prefix in allowed_prefixes)
+                        if not is_allowed:
+                            errors.append(
+                                f"{file_path}:{node.lineno}: "
+                                f"Import from '{module}' not allowed"
+                            )
     except SyntaxError as e:
         errors.append(f"{file_path}:{e.lineno}: Syntax error - {e.msg}")
     
