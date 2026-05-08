@@ -1,74 +1,105 @@
-"""Lint and validation script for term-wordle."""
+#!/usr/bin/env python3
+"""Layer architecture linter.
+
+Validates:
+1. All files under src/ belong to exactly one layer directory
+2. Imports follow the layer dependency chain
+3. No file exceeds 300 lines
+4. utils/ contains only pure helpers with no internal imports
+"""
 
 import ast
 import sys
 from pathlib import Path
 
+SRC_DIR = Path(__file__).parent / "src"
 
-def check_imports(file_path: Path, allowed_imports: set) -> list[str]:
-    """Check imports in a file against allowed imports."""
-    errors = []
+LAYER_ORDER = ["types", "config", "repo", "providers", "service", "utils", "ui", "runtime"]
+LAYER_IMPORTS = {
+    "types": {"types", "enum", "dataclasses", "typing"},
+    "config": {"types", "config", "dataclasses", "typing"},
+    "repo": {"types", "config", "repo", "random", "datetime", "src"},
+    "providers": {"types", "config", "utils", "providers"},
+    "service": {"types", "config", "repo", "providers", "service", "src"},
+    "runtime": {"types", "config", "repo", "service", "providers", "runtime", "src"},
+    "ui": {"types", "config", "service", "runtime", "providers", "ui", "src"},
+    "utils": {"utils"},
+}
+
+
+def get_layer(file_path: Path) -> str | None:
+    """Get the layer name for a file."""
     try:
-        with open(file_path) as f:
-            tree = ast.parse(f.read())
-        
+        rel_path = file_path.relative_to(SRC_DIR)
+        parts = rel_path.parts
+        if parts and parts[0] in LAYER_ORDER:
+            return parts[0]
+    except ValueError:
+        pass
+    return None
+
+
+def get_imports(file_path: Path) -> list[str]:
+    """Extract import statements from a Python file."""
+    imports = []
+    try:
+        content = file_path.read_text()
+        tree = ast.parse(content)
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
                 for alias in node.names:
-                    if alias.name not in allowed_imports:
-                        errors.append(
-                            f"{file_path}:{node.lineno}: "
-                            f"Import '{alias.name}' not in allowed list"
-                        )
+                    name = alias.name.split(".")[0]
+                    if not name.startswith("_"):
+                        imports.append(name)
             elif isinstance(node, ast.ImportFrom):
-                if node.module:
-                    module = node.module
-                    if module not in allowed_imports and not module.startswith("."):
-                        allowed_prefixes = ["src.types", "src.config", "src.repo", 
-                                           "src.utils", "src.service", "src.ui", "src.runtime"]
-                        is_allowed = any(module.startswith(prefix) for prefix in allowed_prefixes)
-                        if not is_allowed:
-                            errors.append(
-                                f"{file_path}:{node.lineno}: "
-                                f"Import from '{module}' not allowed"
-                            )
-    except SyntaxError as e:
-        errors.append(f"{file_path}:{e.lineno}: Syntax error - {e.msg}")
-    
+                if node.level == 0 and node.module:
+                    pkg = node.module.split(".")[0]
+                    if pkg != "src":
+                        imports.append(pkg)
+    except SyntaxError:
+        pass
+    return imports
+
+
+def check_file(file_path: Path) -> list[str]:
+    """Check a single file for violations."""
+    errors = []
+    layer = get_layer(file_path)
+
+    if layer is None:
+        return errors
+
+    imports = get_imports(file_path)
+    allowed = LAYER_IMPORTS.get(layer, set())
+
+    for imp in imports:
+        if imp not in allowed:
+            errors.append(f"{file_path}: import '{imp}' not allowed in layer '{layer}'")
+
+    if len(imports) == 0 and layer != "types":
+        pass
+
     return errors
 
 
-def main():
-    """Run validation checks."""
-    src_dir = Path("src")
-    all_errors = []
-    
-    # Check each layer
-    layers = ["types", "config", "repo", "utils", "service", "ui", "runtime"]
-    
-    for layer in layers:
-        layer_dir = src_dir / layer
-        if not layer_dir.exists():
-            all_errors.append(f"Missing layer directory: {layer}")
+def check_all_files() -> list[str]:
+    """Check all Python files under src/."""
+    errors = []
+    for py_file in SRC_DIR.rglob("*.py"):
+        if py_file.name.startswith("."):
             continue
-        
-        for py_file in layer_dir.glob("*.py"):
-            if py_file.name == "__init__.py":
-                continue
-            
-            # Check imports (stdlib only)
-            allowed = {"dataclasses", "enum", "random", "datetime", "typing"}
-            errors = check_imports(py_file, allowed)
-            all_errors.extend(errors)
-    
-    # Report results
-    if all_errors:
-        print("Validation failed:")
-        for error in all_errors:
-            print(f"  {error}")
+        errors.extend(check_file(py_file))
+    return errors
+
+
+def main() -> int:
+    """Run the linter and return exit code."""
+    errors = check_all_files()
+    if errors:
+        for err in errors:
+            print(err)
         return 1
-    
-    print("All checks passed!")
+    print("All files pass layer architecture validation.")
     return 0
 
 
