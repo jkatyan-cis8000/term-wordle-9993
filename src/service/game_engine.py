@@ -1,7 +1,5 @@
 """Core game logic for processing guesses and managing game state."""
 
-from typing import Optional
-
 from src.repo.word_repository import WordRepository
 from src.types.game_state import GameState
 from src.types.guess_result import GuessResult
@@ -11,7 +9,7 @@ from src.types.word_source import WordSource
 class GameEngine:
     """Manages game state and processes user guesses."""
 
-    def __init__(self, word_source: Optional[WordSource] = None):
+    def __init__(self, word_source=None):
         """Initialize game with optional custom word source for testing."""
         self.word_source = word_source or WordRepository()
         self.daily_word = self.word_source.get_daily_word()

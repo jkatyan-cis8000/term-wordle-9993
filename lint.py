@@ -22,7 +22,7 @@ LAYER_IMPORTS = {
     "providers": {"types", "config", "utils", "providers"},
     "service": {"types", "config", "repo", "providers", "service", "src"},
     "runtime": {"types", "config", "repo", "service", "providers", "runtime", "src"},
-    "ui": {"types", "config", "service", "runtime", "providers", "ui", "src"},
+    "ui": {"types", "config", "service", "runtime", "providers", "ui", "src", "sys"},
     "utils": {"utils"},
 }
 
