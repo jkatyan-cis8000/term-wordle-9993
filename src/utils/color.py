@@ -1,26 +1,25 @@
 """ANSI color helper functions."""
 
-from src.config.settings import (
-    COLOR_GREEN,
-    COLOR_YELLOW,
-    COLOR_GREY,
-    COLOR_RESET
-)
+# ANSI color codes (must match config/settings.py)
+_COLOR_GREEN: str = "\033[92m"
+_COLOR_YELLOW: str = "\033[93m"
+_COLOR_GREY: str = "\033[90m"
+_COLOR_RESET: str = "\033[0m"
 
 
 def color_green(text: str) -> str:
     """Return text with green color."""
-    return f"{COLOR_GREEN}{text}{COLOR_RESET}"
+    return f"{_COLOR_GREEN}{text}{_COLOR_RESET}"
 
 
 def color_yellow(text: str) -> str:
     """Return text with yellow color."""
-    return f"{COLOR_YELLOW}{text}{COLOR_RESET}"
+    return f"{_COLOR_YELLOW}{text}{_COLOR_RESET}"
 
 
 def color_grey(text: str) -> str:
     """Return text with grey color."""
-    return f"{COLOR_GREY}{text}{COLOR_RESET}"
+    return f"{_COLOR_GREY}{text}{_COLOR_RESET}"
 
 
 def color_letter(letter: str, status: str) -> str:
